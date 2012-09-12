@@ -1,0 +1,108 @@
+=== Usemem ===
+
+usemem allocates and fills memory.
+
+Contents of this document:
+- Motivation
+- Compiling
+- Running
+- Features
+- Rationale
+- Warning   (!)
+
+=== Motivation ===
+
+It is useful in situations where you want do tests having to do with
+for example:
+- program behaviour under memory shortages or
+- operating system behaviour regarding memory consumption.
+
+I created usemem for some KVM-KSM tests I needed to do.
+Since this was not the first time I wrote this kind of  program, I
+decided to maximize its functionality and put it online, saving me and
+possibly others the effort to implement it again.
+
+
+
+=== Compiling ===
+
+In order to compile usemem, run:
+make
+
+
+
+=== Running ===
+
+For instructions on running usemem, see the built in help:
+./usemem help
+
+Remark:
+You can add - or -- to commands, and you can shorten commands and
+options as long as they stay unambiguous.
+I.e.: "usemem -ran --q" will work just like "usemem r -quie".
+
+
+
+=== Features ===
+
+- fill memory with zeros or random bytes
+- dense and sparse (page tainting) mode
+- fully posix and ansi compliant, therefore platform independent
+- no external dependencies
+- free software (GPLv3) 
+
+
+
+=== Rationale ===
+
+Different platforms treat memory allocation differently. Linux for
+example only reserves memory when it is actually being used. Thus a
+simple malloc does not change the amount of free memory. Therefore,
+usemem allocates and uses memory.
+
+Since memory is organized in something called pages (a certain amount
+of bytes, e.g. 4096), what memory managers do when a process calls
+malloc is reserving as many pages as needed to contain the amount of
+memory the process asked for.
+
+Taking a second look at the Linux memory manager, what happens if a
+process accesses its allocated memory? If the target address has not
+been accessed before, a new page of memory is reserved for the process
+and mapped into its address space.
+
+In usemem, there are two principal modes for filling memory: dense and
+sparse. In dense mode, every single byte of the allocated space is
+being written. In sparse mode, only one integer per memory page is
+written.
+
+So, depending on your objective, you can choose a mode that best fits
+your goals. If all you want is memory to be used, the quickest way to
+achieve this is sparsely filling the memory with zeros. If you want to
+minimize the amount of free memory in the presence of e.g. KSM, you
+would sparsely fill the memory with random integers. If what you want
+to do requires the whole address space to be filled (not just a couple
+of bytes per page), you will prefer one of the dense modes.
+
+
+
+=== Warning ===
+
+Be careful when using the fill mode (setting space to 0). Quoting the
+Linux malloc(3) manpage from 2009-01-13:
+
+"""
+By default, Linux follows an  optimistic  memory  allocation  strategy.
+This  means  that  when malloc() returns non-NULL there is no guarantee
+that the memory really is available.  This is a  really  bad  bug.   In
+case  it  turns  out that the system is out of memory, one or more pro‐
+cesses will be killed by the infamous OOM killer.   In  case  Linux  is
+employed  under  circumstances where it would be less desirable to sud‐
+denly lose some randomly picked processes, and moreover the kernel ver‐
+sion  is  sufficiently  recent,  one can switch off this overcommitting
+behavior using a command like:
+
+    # echo 2 > /proc/sys/vm/overcommit_memory
+
+See also  the  kernel  Documentation  directory,  files  vm/overcommit-
+accounting and sysctl/vm.txt.
+"""
